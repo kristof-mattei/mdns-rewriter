@@ -1,15 +1,15 @@
 [package]
-name = "rust-seed"
+name = "mdns-rewriter"
 # don't change this, it's updated before an actual build by update-version.sh
 version = "0.0.0-development"
 edition = "2021"
 rust-version = "1.82.0"
 authors = ["Kristof Mattei"]
-description = "Rust seed application"
+description = "mdns-rewriter"
 license-file = "LICENSE"
-categories = ["starter", "seed"]
-keywords = ["integrity", "seed", "starter", "docker", "release"]
-repository = "https://github.com/kristof-mattei/rust-seed"
+categories = ["network"]
+keywords = ["mdns", "rewrite", "docker"]
+repository = "https://github.com/kristof-mattei/mdns-rewriter"
 
 [lints.clippy]
 # don't stop from compiling / running
@@ -30,9 +30,24 @@ opt-level = 3
 
 [features]
 coverage = []
+ip_pktinfo = []
+so_bindtodevice = []
 
 [dependencies]
-color-eyre = "0.6.3"
+clap = { version = "4.5.20", features = ["cargo", "derive", "string"] }
+color-eyre = { git = "https://github.com/eyre-rs/eyre", rev = "fc83cb8125bdde3a3b06e8b06c3405f6fc040a8a" }
+const_format = "0.2.33"
+libc = "0.2.161"
+socket2 = { version = "0.5.7" }
+tokio = { version = "1.41.0", features = ["macros", "net", "rt-multi-thread", "signal", "time"] }
+tokio-util = { version = "0.7.12", features = ["rt"] }
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = [
+    "env-filter",
+    "time",
+    "tracing-log",
+] }
+tracing-error = "0.2.0"
 # reqwest = { version = "0.11.5", features = ["json"] }
 # serde_json = "1.0.68"
 # serde = { version = "1.0.130", features = ["derive"] }

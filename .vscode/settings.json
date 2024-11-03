@@ -9,6 +9,15 @@
     },
     "rust-analyzer.debug.openDebugPane": true,
     "rust-analyzer.runnables.extraEnv": {
-        "RUST_LOG": "DEBUG,rust_seed=TRACE"
+        "RUST_LOG": "DEBUG,mdns_rewriter=TRACE"
+    },
+    "files.associations": {
+        ".env*": "dotenv",
+        "Dockerfile.*": "dockerfile",
+        ".releaserc": "json",
+        "ni_test_utils.h": "c",
+        "ni_parse_header.h": "c",
+        "if.h": "c",
+        "types.h": "c"
     }
 }

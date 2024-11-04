@@ -1,18 +1,27 @@
 mod cli;
 mod reflector;
 mod signal_handlers;
+mod unix;
+
+use std::env;
 use std::ffi::CString;
 use std::fs::{remove_file, File};
 use std::io::{BufRead, BufReader, Write};
-use std::net::SocketAddr;
+use std::mem::MaybeUninit;
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::os::fd::AsRawFd;
 use std::process::exit;
+use std::sync::Arc;
 use std::time::Duration;
-use std::{env, sync::Arc};
 
 use cli::{parse_cli, Config};
 use color_eyre::{eyre, Section};
+use libc::{
+    chdir, fork, getpid, ifreq, ioctl, kill, pid_t, setsid, signal, sockaddr_in, umask, IFNAMSIZ,
+    IP_PKTINFO, SIGCHLD, SIGHUP, SIG_IGN, SIOCGIFADDR, SIOCGIFNETMASK, SOL_IP,
+};
 use reflector::reflect;
+use socket2::{Domain, Type};
 use tokio::net::UdpSocket;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
@@ -21,15 +30,6 @@ use tracing::{event, Level};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
-mod unix;
-use std::mem::MaybeUninit;
-use std::net::{Ipv4Addr, SocketAddrV4};
-
-use libc::{
-    chdir, fork, getpid, ifreq, ioctl, kill, pid_t, setsid, signal, sockaddr_in, umask, IFNAMSIZ,
-    IP_PKTINFO, SIGCHLD, SIGHUP, SIG_IGN, SIOCGIFADDR, SIOCGIFNETMASK, SOL_IP,
-};
-use socket2::{Domain, Type};
 
 // TODO this should come from cargo
 const PACKAGE: &str = env!("CARGO_PKG_NAME");

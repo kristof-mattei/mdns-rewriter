@@ -1,16 +1,27 @@
 mod cli;
+mod reflector;
 mod signal_handlers;
+mod unix;
+
 use std::env;
 use std::ffi::CString;
 use std::fs::{remove_file, File};
 use std::io::{BufRead, BufReader, Write};
-use std::net::SocketAddr;
+use std::mem::MaybeUninit;
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::os::fd::AsRawFd;
 use std::process::exit;
+use std::sync::Arc;
 use std::time::Duration;
 
 use cli::{parse_cli, Config};
 use color_eyre::{eyre, Section};
+use libc::{
+    chdir, fork, getpid, ifreq, ioctl, kill, pid_t, setsid, signal, sockaddr_in, umask, IFNAMSIZ,
+    IP_PKTINFO, SIGCHLD, SIGHUP, SIG_IGN, SIOCGIFADDR, SIOCGIFNETMASK, SOL_IP,
+};
+use reflector::reflect;
+use socket2::{Domain, Type};
 use tokio::net::UdpSocket;
 use tokio::time::timeout;
 use tokio_util::sync::CancellationToken;
@@ -19,15 +30,6 @@ use tracing::{event, Level};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
-mod unix;
-use std::mem::MaybeUninit;
-use std::net::{Ipv4Addr, SocketAddrV4};
-
-use libc::{
-    chdir, fork, getpid, ifreq, ioctl, kill, pid_t, setsid, signal, sockaddr_in, umask, IFNAMSIZ,
-    IP_PKTINFO, SIGCHLD, SIGHUP, SIG_IGN, SIOCGIFADDR, SIOCGIFNETMASK, SOL_IP,
-};
-use socket2::{Domain, Socket, Type};
 
 // TODO this should come from cargo
 const PACKAGE: &str = env!("CARGO_PKG_NAME");
@@ -71,6 +73,9 @@ async fn start_tasks() -> Result<(), eyre::Error> {
             clap_error.exit();
         }
     })?;
+
+    let config = Arc::new(config);
+
     // unsure what to do here for now
     // openlog(PACKAGE, LOG_PID | LOG_CONS, LOG_DAEMON);
 
@@ -113,75 +118,12 @@ async fn start_tasks() -> Result<(), eyre::Error> {
     {
         let cancellation_token = cancellation_token.clone();
 
-        task_tracker.spawn(async move {
-            let server_socket =
-                UdpSocket::try_from(std::net::UdpSocket::from(server_socket)).unwrap();
-
-            let mut buffer = vec![0u8; PACKET_SIZE];
-
-            loop {
-                let (recvsize, from_addr) = tokio::select! {
-                    () = cancellation_token.cancelled() => { break; },
-                    result = server_socket.recv_from(&mut buffer) => {
-                        match result {
-                            Ok(ok) => ok,
-                            Err(err) => {
-                                event!(Level::ERROR, ?err, "recv()");
-                                continue;
-                            }
-                        }
-                    }
-                };
-
-                let is_loopback = sockets
-                    .iter()
-                    .any(|socket| socket.address == from_addr.ip());
-
-                if is_loopback {
-                    continue;
-                }
-
-                event!(Level::INFO, "data from={} size={}", from_addr, recvsize);
-
-                for socket in &sockets {
-                    // do not repeat packet back to the same network from which it originated
-                    if let SocketAddr::V4(socket_address) = from_addr {
-                        if socket_address.ip() & socket.mask == socket.network {
-                            continue;
-                        }
-                    } else {
-                        event!(Level::INFO, "Got message from IPv6?");
-                    }
-
-                    if config.verbose {
-                        event!(Level::INFO, "repeating data to {}", socket.name);
-                    }
-
-                    // repeat data
-                    match socket
-                        .socket
-                        .send_to(&buffer[0..recvsize], &BROADCAST_MDNS)
-                        .await
-                    {
-                        Ok(sentsize) => {
-                            if sentsize != recvsize {
-                                event!(
-                                    Level::ERROR,
-                                    "send_packet size differs: sent={} actual={}",
-                                    recvsize,
-                                    sentsize
-                                );
-                            }
-                        },
-                        Err(err) => {
-                            event!(Level::ERROR, ?err, "send()");
-                        },
-                    }
-                }
-            }
-
-            // server_socket and sockets are dropped here
-        });
+        task_tracker.spawn(reflect(
+            server_socket,
+            sockets,
+            config.clone(),
+            cancellation_token,
+        ));
     }
 
     // now we wait forever for either
@@ -231,7 +173,7 @@ async fn start_tasks() -> Result<(), eyre::Error> {
     Ok(())
 }
 
-fn create_recv_sock() -> Result<socket2::Socket, eyre::Error> {
+fn create_recv_sock() -> Result<UdpSocket, eyre::Error> {
     let socket =
         socket2::Socket::new(Domain::IPV4, Type::DGRAM, None /* IPPROTO_IP */).map_err(|err| {
             event!(Level::ERROR, ?err, "recv socket()");
@@ -277,7 +219,7 @@ fn create_recv_sock() -> Result<socket2::Socket, eyre::Error> {
     }
     // #endif
 
-    Ok(socket)
+    Ok(UdpSocket::from_std(socket.into())?)
 }
 
 #[derive(Debug)]
@@ -294,7 +236,7 @@ struct InterfaceSocket {
     network: Ipv4Addr,
 }
 
-fn create_send_sock(recv_sockfd: &Socket, ifname: String) -> Result<InterfaceSocket, eyre::Error> {
+fn get_interface_details(ifname: &str) -> Result<(Ipv4Addr, Ipv4Addr), eyre::Report> {
     let socket = socket2::Socket::new(
         Domain::IPV4,
         Type::DGRAM,
@@ -307,16 +249,10 @@ fn create_send_sock(recv_sockfd: &Socket, ifname: String) -> Result<InterfaceSoc
         err
     })?;
 
-    socket.set_nonblocking(true).map_err(|err| {
-        event!(Level::ERROR, ?err, ifname, "send setsockopt(SO_NONBLOCK)");
-
-        err
-    })?;
-
-    let c_ifname = CString::new(ifname.as_bytes())
-        .map_err(|err| eyre::Error::new(err).with_note(|| "Failed to convert ifname to CString"))?;
-
     let mut ifr = unsafe { MaybeUninit::<ifreq>::zeroed().assume_init() };
+
+    let c_ifname = CString::new(ifname)
+        .map_err(|err| eyre::Error::new(err).with_note(|| "Failed to convert ifname to CString"))?;
 
     let len = std::cmp::min(
         c_ifname.as_bytes_with_nul().len(),
@@ -330,6 +266,74 @@ fn create_send_sock(recv_sockfd: &Socket, ifname: String) -> Result<InterfaceSoc
     let s = (&raw mut ifr.ifr_ifru).cast::<sockaddr_in>();
 
     let if_addr = &mut (unsafe { &mut *s }).sin_addr;
+
+    #[cfg(target_env = "musl")]
+    let siocgifnetmask: i32 = SIOCGIFNETMASK.try_into().unwrap();
+    #[cfg(not(target_env = "musl"))]
+    let siocgifnetmask = SIOCGIFNETMASK;
+
+    // get netmask
+    let interface_mask = unsafe {
+        if 0 == ioctl(socket.as_raw_fd(), siocgifnetmask, &ifr) {
+            let mask_in_network_order = if_addr.s_addr;
+
+            Ipv4Addr::from(u32::from_be(mask_in_network_order))
+        } else {
+            Ipv4Addr::UNSPECIFIED
+        }
+    };
+
+    #[cfg(target_env = "musl")]
+    let siocgifaddr: i32 = SIOCGIFADDR.try_into().unwrap();
+    #[cfg(not(target_env = "musl"))]
+    let siocgifaddr = SIOCGIFADDR;
+
+    // .. and interface address
+    let interface_address = unsafe {
+        if 0 == ioctl(socket.as_raw_fd(), siocgifaddr, &ifr) {
+            let addr_in_network_order = if_addr.s_addr;
+
+            Ipv4Addr::from(u32::from_be(addr_in_network_order))
+        } else {
+            Ipv4Addr::UNSPECIFIED
+        }
+    };
+
+    Ok((interface_address, interface_mask))
+}
+
+fn create_send_sock(
+    recv_sockfd: &UdpSocket,
+    ifname: String,
+) -> Result<InterfaceSocket, eyre::Error> {
+    let (interface_address, interface_mask) = get_interface_details(&ifname)?;
+
+    let socket = socket2::Socket::new(
+        Domain::IPV4,
+        Type::DGRAM,
+        // IPPROTO_IP
+        None,
+    )
+    .map_err(|err| {
+        event!(Level::ERROR, ?err, ifname, "send socket()");
+
+        err
+    })?;
+
+    // compute network (address & mask)
+    let interface_network = interface_address & interface_mask;
+
+    socket.set_nonblocking(true).map_err(|err| {
+        event!(Level::ERROR, ?err, ifname, "send setsockopt(SO_NONBLOCK)");
+
+        err
+    })?;
+
+    socket.set_reuse_address(true).map_err(|err| {
+        event!(Level::ERROR, ?err, ifname, "send setsockopt(SO_REUSEADDR)");
+
+        err
+    })?;
 
     // #ifdef SO_BINDTODEVICE
     // do we support any OS that doesn't have `SO_BINDTODEVICE?`
@@ -345,41 +349,6 @@ fn create_send_sock(recv_sockfd: &Socket, ifname: String) -> Result<InterfaceSoc
     })?;
     // #endif
 
-    // get netmask
-    let interface_mask = unsafe {
-        if 0 == ioctl(socket.as_raw_fd(), SIOCGIFNETMASK, &ifr) {
-            let mask_in_network_order = if_addr.s_addr;
-
-            Ipv4Addr::from(u32::from_be(mask_in_network_order))
-        } else {
-            Ipv4Addr::UNSPECIFIED
-        }
-    };
-
-    dbg!(interface_mask);
-
-    // .. and interface address
-    let interface_address = unsafe {
-        if 0 == ioctl(socket.as_raw_fd(), SIOCGIFADDR, &ifr) {
-            let addr_in_network_order = if_addr.s_addr;
-
-            Ipv4Addr::from(u32::from_be(addr_in_network_order))
-        } else {
-            Ipv4Addr::UNSPECIFIED
-        }
-    };
-
-    dbg!(interface_address);
-
-    // compute network (address & mask)
-    let interface_network = interface_mask & interface_address;
-
-    socket.set_reuse_address(true).map_err(|err| {
-        event!(Level::ERROR, ?err, ifname, "send setsockopt(SO_REUSEADDR)");
-
-        err
-    })?;
-
     // bind to an address
     let server_addr = SocketAddrV4::new(interface_address, MDNS_PORT);
 
@@ -391,7 +360,7 @@ fn create_send_sock(recv_sockfd: &Socket, ifname: String) -> Result<InterfaceSoc
 
     // add membership to receiving socket
     recv_sockfd
-        .join_multicast_v4(&MDNS_ADDR, &interface_address)
+        .join_multicast_v4(MDNS_ADDR, interface_address)
         .map_err(|err| {
             event!(
                 Level::ERROR,

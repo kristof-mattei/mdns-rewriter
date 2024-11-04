@@ -50,9 +50,7 @@
                     "kind": "bin"
                 }
             },
-            "args": [
-                "--help"
-            ],
+            "args": ["--help"],
             "cwd": "${workspaceFolder}",
             "env": {
                 "RUST_BACKTRACE": "1",

@@ -236,10 +236,7 @@ struct InterfaceSocket {
     network: Ipv4Addr,
 }
 
-fn create_send_sock(
-    recv_sockfd: &UdpSocket,
-    ifname: String,
-) -> Result<InterfaceSocket, eyre::Error> {
+fn get_interface_details(ifname: &str) -> Result<(Ipv4Addr, Ipv4Addr), eyre::Report> {
     let socket = socket2::Socket::new(
         Domain::IPV4,
         Type::DGRAM,
@@ -254,7 +251,7 @@ fn create_send_sock(
 
     let mut ifr = unsafe { MaybeUninit::<ifreq>::zeroed().assume_init() };
 
-    let c_ifname = CString::new(ifname.as_str())
+    let c_ifname = CString::new(ifname)
         .map_err(|err| eyre::Error::new(err).with_note(|| "Failed to convert ifname to CString"))?;
 
     let len = std::cmp::min(
@@ -270,9 +267,14 @@ fn create_send_sock(
 
     let if_addr = &mut (unsafe { &mut *s }).sin_addr;
 
+    #[cfg(target_env = "musl")]
+    let siocgifnetmask: i32 = SIOCGIFNETMASK.try_into().unwrap();
+    #[cfg(not(target_env = "musl"))]
+    let siocgifnetmask = SIOCGIFNETMASK;
+
     // get netmask
     let interface_mask = unsafe {
-        if 0 == ioctl(socket.as_raw_fd(), SIOCGIFNETMASK, &ifr) {
+        if 0 == ioctl(socket.as_raw_fd(), siocgifnetmask, &ifr) {
             let mask_in_network_order = if_addr.s_addr;
 
             Ipv4Addr::from(u32::from_be(mask_in_network_order))
@@ -281,9 +283,14 @@ fn create_send_sock(
         }
     };
 
+    #[cfg(target_env = "musl")]
+    let siocgifaddr: i32 = SIOCGIFADDR.try_into().unwrap();
+    #[cfg(not(target_env = "musl"))]
+    let siocgifaddr = SIOCGIFADDR;
+
     // .. and interface address
     let interface_address = unsafe {
-        if 0 == ioctl(socket.as_raw_fd(), SIOCGIFADDR, &ifr) {
+        if 0 == ioctl(socket.as_raw_fd(), siocgifaddr, &ifr) {
             let addr_in_network_order = if_addr.s_addr;
 
             Ipv4Addr::from(u32::from_be(addr_in_network_order))
@@ -292,8 +299,29 @@ fn create_send_sock(
         }
     };
 
+    Ok((interface_address, interface_mask))
+}
+
+fn create_send_sock(
+    recv_sockfd: &UdpSocket,
+    ifname: String,
+) -> Result<InterfaceSocket, eyre::Error> {
+    let (interface_address, interface_mask) = get_interface_details(&ifname)?;
+
+    let socket = socket2::Socket::new(
+        Domain::IPV4,
+        Type::DGRAM,
+        // IPPROTO_IP
+        None,
+    )
+    .map_err(|err| {
+        event!(Level::ERROR, ?err, ifname, "send socket()");
+
+        err
+    })?;
+
     // compute network (address & mask)
-    let interface_network = interface_mask & interface_address;
+    let interface_network = interface_address & interface_mask;
 
     socket.set_nonblocking(true).map_err(|err| {
         event!(Level::ERROR, ?err, ifname, "send setsockopt(SO_NONBLOCK)");

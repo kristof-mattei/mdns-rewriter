@@ -5,8 +5,8 @@ use tokio::net::UdpSocket;
 use tokio_util::sync::CancellationToken;
 use tracing::{event, Level};
 
-use crate::cli::Config;
-use crate::{InterfaceSocket, BROADCAST_MDNS, PACKET_SIZE};
+use crate::{cli::Config, sockets::InterfaceSocket};
+use crate::{BROADCAST_MDNS, PACKET_SIZE};
 
 pub(crate) async fn reflect(
     server_socket: UdpSocket,

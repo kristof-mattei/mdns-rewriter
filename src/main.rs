@@ -14,9 +14,7 @@ use std::time::Duration;
 
 use cli::{parse_cli, Config};
 use color_eyre::eyre;
-use libc::{
-    chdir, fork, getpid, kill, pid_t, setsid, signal, umask, SIGCHLD, SIGHUP, SIG_IGN,
-};
+use libc::{chdir, fork, getpid, kill, pid_t, setsid, signal, umask, SIGCHLD, SIGHUP, SIG_IGN};
 use reflector::reflect;
 use sockets::{create_recv_sock, create_send_sock};
 use tokio::time::timeout;

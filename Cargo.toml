@@ -37,7 +37,7 @@ so_bindtodevice = []
 clap = { version = "4.5.20", features = ["cargo", "derive", "string"] }
 color-eyre = { git = "https://github.com/eyre-rs/eyre", rev = "fc83cb8125bdde3a3b06e8b06c3405f6fc040a8a" }
 const_format = "0.2.33"
-libc = "0.2.161"
+libc = "0.2.162"
 socket2 = { version = "0.5.7" }
 tokio = { version = "1.41.1", features = ["macros", "net", "rt-multi-thread", "signal", "time"] }
 tokio-util = { version = "0.7.12", features = ["rt"] }

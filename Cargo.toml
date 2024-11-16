@@ -8,7 +8,7 @@ authors = ["Kristof Mattei"]
 description = "mdns-reflector"
 license-file = "LICENSE"
 categories = ["network"]
-keywords = ["mdns", "rewrite", "docker"]
+keywords = ["mdns", "reflect", "docker"]
 repository = "https://github.com/kristof-mattei/mdns-reflector"
 
 [lints.clippy]

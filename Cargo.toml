@@ -1,15 +1,15 @@
 [package]
-name = "mdns-rewriter"
+name = "mdns-reflector"
 # don't change this, it's updated before an actual build by update-version.sh
 version = "0.0.0-development"
 edition = "2021"
 rust-version = "1.82.0"
 authors = ["Kristof Mattei"]
-description = "mdns-rewriter"
+description = "mdns-reflector"
 license-file = "LICENSE"
 categories = ["network"]
 keywords = ["mdns", "rewrite", "docker"]
-repository = "https://github.com/kristof-mattei/mdns-rewriter"
+repository = "https://github.com/kristof-mattei/mdns-reflector"
 
 [lints.clippy]
 # don't stop from compiling / running

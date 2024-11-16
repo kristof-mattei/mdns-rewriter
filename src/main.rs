@@ -186,7 +186,7 @@ fn daemonize(config: &Config, _cancellation_token: &CancellationToken) {
     }
 
     // let closure = |signal| {
-    //     mdns_rewriter_shutdown(signal, &cancellation_token);
+    //     mdns_reflector_shutdown(signal, &cancellation_token);
     // };
 
     // signals
@@ -246,7 +246,7 @@ fn already_running(config: &Config) -> Option<i32> {
 }
 
 #[expect(unused)]
-fn mdns_rewriter_shutdown(_signal: i32, cancellation_token: &CancellationToken) {
+fn mdns_reflector_shutdown(_signal: i32, cancellation_token: &CancellationToken) {
     cancellation_token.cancel();
 }
 

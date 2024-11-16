@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'mdns-rewriter'",
+            "name": "Debug executable 'mdns-reflector'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=mdns-rewriter",
-                    "--package=mdns-rewriter"
+                    "--bin=mdns-reflector",
+                    "--package=mdns-reflector"
                 ],
                 "filter": {
-                    "name": "mdns-rewriter",
+                    "name": "mdns-reflector",
                     "kind": "bin"
                 }
             },
@@ -30,7 +30,7 @@
             "cwd": "${workspaceFolder}",
             "env": {
                 "RUST_BACKTRACE": "1",
-                "RUST_LOG": "ERROR,mdns_rewriter=ERROR"
+                "RUST_LOG": "ERROR,mdns_reflector=ERROR"
             },
             "internalConsoleOptions": "openOnSessionStart",
             "terminal": "console"
@@ -38,15 +38,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'mdns-rewriter' --help",
+            "name": "Debug executable 'mdns-reflector' --help",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=mdns-rewriter",
-                    "--package=mdns-rewriter"
+                    "--bin=mdns-reflector",
+                    "--package=mdns-reflector"
                 ],
                 "filter": {
-                    "name": "mdns-rewriter",
+                    "name": "mdns-reflector",
                     "kind": "bin"
                 }
             },
@@ -56,7 +56,7 @@
             "cwd": "${workspaceFolder}",
             "env": {
                 "RUST_BACKTRACE": "1",
-                "RUST_LOG": "DEBUG,mdns_rewriter=TRACE"
+                "RUST_LOG": "DEBUG,mdns_reflector=TRACE"
             },
             "internalConsoleOptions": "openOnSessionStart",
             "terminal": "console"
@@ -64,16 +64,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'mdns-rewriter'",
+            "name": "Debug unit tests in executable 'mdns-reflector'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=mdns-rewriter",
-                    "--package=mdns-rewriter"
+                    "--bin=mdns-reflector",
+                    "--package=mdns-reflector"
                 ],
                 "filter": {
-                    "name": "mdns-rewriter",
+                    "name": "mdns-reflector",
                     "kind": "bin"
                 }
             },
@@ -81,7 +81,7 @@
             "cwd": "${workspaceFolder}",
             "env": {
                 "RUST_BACKTRACE": "1",
-                "RUST_LOG": "DEBUG,mdns_rewriter=TRACE"
+                "RUST_LOG": "DEBUG,mdns_reflector=TRACE"
             },
             "internalConsoleOptions": "openOnSessionStart",
             "terminal": "console"
@@ -95,7 +95,7 @@
                     "test",
                     "--no-run",
                     "--test=integration_tests",
-                    "--package=mdns-rewriter"
+                    "--package=mdns-reflector"
                 ],
                 "filter": {
                     "name": "integration_tests",
@@ -106,7 +106,7 @@
             "cwd": "${workspaceFolder}",
             "env": {
                 "RUST_BACKTRACE": "1",
-                "RUST_LOG": "DEBUG,mdns_rewriter=TRACE"
+                "RUST_LOG": "DEBUG,mdns_reflector=TRACE"
             },
             "internalConsoleOptions": "openOnSessionStart",
             "terminal": "console"

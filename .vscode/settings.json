@@ -9,7 +9,7 @@
     },
     "rust-analyzer.debug.openDebugPane": true,
     "rust-analyzer.runnables.extraEnv": {
-        "RUST_LOG": "DEBUG,mdns_rewriter=TRACE"
+        "RUST_LOG": "DEBUG,mdns_reflector=TRACE"
     },
     "files.associations": {
         ".env*": "dotenv",

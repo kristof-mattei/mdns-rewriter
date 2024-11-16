@@ -331,7 +331,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mdns-rewriter"
+name = "mdns-reflector"
 version = "0.0.0-development"
 dependencies = [
  "clap",

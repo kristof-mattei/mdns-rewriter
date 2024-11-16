@@ -139,6 +139,8 @@ async fn start_tasks() -> Result<(), eyre::Error> {
         },
     };
 
+    cancellation_token.cancel();
+
     task_tracker.close();
 
     // wait for the task that holds the server to exit gracefully

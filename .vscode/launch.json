@@ -30,7 +30,7 @@
             "cwd": "${workspaceFolder}",
             "env": {
                 "RUST_BACKTRACE": "1",
-                "RUST_LOG": "DEBUG,mdns_rewriter=TRACE"
+                "RUST_LOG": "ERROR,mdns_rewriter=ERROR"
             },
             "internalConsoleOptions": "openOnSessionStart",
             "terminal": "console"
@@ -50,7 +50,9 @@
                     "kind": "bin"
                 }
             },
-            "args": ["--help"],
+            "args": [
+                "--help"
+            ],
             "cwd": "${workspaceFolder}",
             "env": {
                 "RUST_BACKTRACE": "1",

@@ -1,10 +1,12 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
+
 use tokio::net::UdpSocket;
 use tokio_util::sync::CancellationToken;
 use tracing::{event, Level};
 
-use crate::{cli::Config, sockets::InterfaceSocket};
+use crate::cli::Config;
+use crate::sockets::InterfaceSocket;
 use crate::{BROADCAST_MDNS, PACKET_SIZE};
 
 pub(crate) async fn reflect(

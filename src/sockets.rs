@@ -1,6 +1,7 @@
+use std::ffi::CString;
+use std::mem::MaybeUninit;
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::os::fd::AsRawFd;
-use std::{ffi::CString, mem::MaybeUninit};
 
 use color_eyre::{eyre, Section};
 use libc::{ifreq, ioctl, sockaddr_in, IFNAMSIZ, IP_PKTINFO, SIOCGIFADDR, SIOCGIFNETMASK, SOL_IP};

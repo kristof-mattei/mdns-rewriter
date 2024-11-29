@@ -5,7 +5,7 @@ use socket2::Socket;
 
 /// Helper macro to execute a system call that returns an `io::Result`.
 macro_rules! syscall {
-    ($fn: ident ( $($arg: expr),* $(,)* ) ) => {{
+    ($fn: ident ( $($arg: expr_2021),* $(,)* ) ) => {{
         #[allow(unused_unsafe)]
         let res = unsafe { libc::$fn($($arg, )*) };
         if res == -1 {

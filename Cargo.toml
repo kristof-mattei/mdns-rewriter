@@ -48,12 +48,12 @@ tokio = { version = "1.41.1", features = [
 ] }
 tokio-util = { version = "0.7.12", features = ["rt"] }
 tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.18", features = [
+tracing-subscriber = { version = "0.3.19", features = [
     "env-filter",
     "time",
     "tracing-log",
 ] }
-tracing-error = "0.2.0"
+tracing-error = "0.2.1"
 
 # reqwest = { version = "0.11.5", features = ["json"] }
 # serde_json = "1.0.68"

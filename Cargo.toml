@@ -39,7 +39,7 @@ color-eyre = { git = "https://github.com/eyre-rs/eyre", rev = "fc83cb8125bdde3a3
 const_format = "0.2.33"
 libc = "0.2.167"
 socket2 = { version = "0.5.8" }
-tokio = { version = "1.41.1", features = [
+tokio = { version = "1.42.0", features = [
     "macros",
     "net",
     "rt-multi-thread",

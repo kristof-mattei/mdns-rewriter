@@ -34,7 +34,7 @@ ip_pktinfo = []
 so_bindtodevice = []
 
 [dependencies]
-clap = { version = "4.5.21", features = ["cargo", "derive", "string"] }
+clap = { version = "4.5.22", features = ["cargo", "derive", "string"] }
 color-eyre = { git = "https://github.com/eyre-rs/eyre", rev = "fc83cb8125bdde3a3b06e8b06c3405f6fc040a8a" }
 const_format = "0.2.33"
 libc = "0.2.167"
